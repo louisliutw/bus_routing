@@ -1,0 +1,257 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+    <head>
+        <title>Bus System</title>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <meta name="Content-Language" content="zh" />
+        <script type="text/javascript" src="http://www.openlayers.org/api/OpenLayers.js"></script>
+        <script type="text/javascript" src="http://{{HOST}}/~louis/js/OpenStreetMap.js"></script>
+        <script type="text/javascript" src="http://{{HOST}}/~louis/js/map.js"></script>
+        <script type="text/javascript" src="http://www.google.com/jsapi"></script> <script type="text/javascript" language="javascript"> google.load("jquery", "1.3"); </script>
+        <script src="http://{{HOST}}/js/site.js" type="text/javascript"></script>
+        <script type="text/javascript">
+
+var map;
+var stop_marks = new Array();
+var bus_stops = new Array();
+var layer_osmtw;
+var layer_markers;
+var marker_icon;
+var click_stop;
+var epsg4326 = new OpenLayers.Projection("EPSG:4326");
+
+var start_stop;
+var dest_stop;
+
+function set_start(bus_stop, start)
+{
+  var a;
+  var b;
+  if( start == 1){
+    start_stop = bus_stop;
+  }else{
+    dest_stop = bus_stop;
+  }
+
+  try{
+    a = start_stop.name;
+  }catch(e){
+    a = ''
+  }
+  try{
+    b = dest_stop.name;
+  }catch(e){
+    b = ''
+  }
+  $('#routing_title').html('路徑規劃  ' + a + ' - ' + b);
+  if(start_stop != null && dest_stop != null){
+    $.ajax({
+url: 'http://{{HOST}}:{{PORT}}/bus_routing/?start_id=' + start_stop.id + "&dest_id=" + dest_stop.id,
+          type:'get',
+          dataType: 'jsonp',
+          crossDomain: true,
+          error: function(xhr, text, errTh){
+                  $('#routing').html(text);
+          },
+          success: function(response){
+            if(response.result.length == 0){
+              $('#routing').html('查無結果');
+            }else{
+              var msg = '';
+              for(var i = 0; i < response.result.length; i++){
+                var route = '路線' + (i + 1) + ' ';
+                route += response.result[i] + '<br />';
+                msg += route;
+              }
+              $('#routing').html(msg);
+            }
+          },
+          }
+        );
+  }
+}
+
+function marker_event(evt){
+	var len = bus_stops.length;
+	var ref;
+	var oper;
+	for( var i = 0; i < len; i++){
+		if( bus_stops[i].marker == evt.object ){
+			click_stop = i;
+			$('#msg').html('<p>' + bus_stops[i].name + 
+                        '<a href="#" onclick="set_start(bus_stops['+ i + '], 1); return false;">設為起點</a> ' + 
+                        '<a href="#" onclick="set_start(bus_stops['+ i + '], 0); return false;">設為終點</a> <br />');
+
+			for( var r = 0; r < bus_stops[i].route_ref.length; r++){
+				route_ref = bus_stops[i].route_ref[r].ref;
+				direct = bus_stops[i].route_ref[r].direct;
+				oper = bus_stops[i].oper;
+				$.ajax({
+                                url: 'http://{{HOST}}:{{PORT}}/bus_info/?ref=' + route_ref + "&oper="
+                                + oper + "&direct=" + direct,
+				type:'get',
+				dataType: 'jsonp',
+				crossDomain: true,
+				error: function(xhr, text, errTh){
+					$('#msg').html(text);
+				},
+				success: function(response){
+					for( var clk_i = 0; clk_i < bus_stops[click_stop].ref.length; clk_i++){
+						for(var j = 0; j < response.stops.length; j++){
+							if( response.stops[j].stop_ref == bus_stops[click_stop].ref[clk_i]){
+								content = $('#msg').html();
+								append_msg = '<p>' + response.descript;
+								if( response.direction == 'f'){
+									append_msg += '去程';
+								}else{
+									append_msg += '回程';
+								}
+                                                                append_msg += ' 下班到站時間/上班次離站時間:'
+                                                                + response.stops[j].predict_time + '</p>';
+								$('#msg').html(content + append_msg);
+							}
+						}
+					}
+				},
+				});
+			};
+			break;
+		}
+	}
+}
+
+function update_pois(){
+   $.ajax({
+      url: 'http://{{HOST}}:{{PORT}}/bus_stops/',
+      type: 'GET',
+      dataType: 'jsonp',
+      crossDomain: true,
+      error: function(xhr, text, errTh){
+	 alert(errTh);
+         },
+      success: function(response){
+	var len = stop_marks.length;
+	for( var i = 0; i < len; i++){
+		var m = stop_marks.pop();
+                layer_markers.removeMarker(m);
+		m.destroy();
+	}
+
+	len = response.length;
+	bus_stops = response;
+	stop_marks = new Array();
+	for( var i = 0; i < len; i++){
+	   var LonLat = new OpenLayers.LonLat(bus_stops[i].lon, bus_stops[i].lat).transform(epsg4326, map.getProjectionObject());
+           var M = new OpenLayers.Marker(LonLat, marker_icon.clone());
+	   M.events.register('mousedown', M, marker_event);
+	   stop_marks.push(M);
+           layer_markers.addMarker(M);
+	   bus_stops[i].marker = M;
+	}
+      }
+      });
+}
+
+function init() {
+
+    OpenLayers.Lang.setCode('en');
+    var lon = 120.30272;
+    var lat = 22.65722;
+    var centre = new OpenLayers.LonLat(lon, lat);
+    var zoom = 17;
+    var overviewctrl = new OpenLayers.Control.OverviewMap();
+    var size = new OpenLayers.Size(21, 25);
+    var offset = new OpenLayers.Pixel(-(size.w/2), -size.h);
+    marker_icon = new OpenLayers.Icon('http://www.openlayers.org/dev/img/marker.png',size,offset);
+
+    map = new OpenLayers.Map('map', {
+        //projection: new OpenLayers.Projection("EPSG:4326"),
+        //displayProjection: new OpenLayers.Projection("EPSG:4326"),
+        controls: [
+	    new OpenLayers.Control.Permalink(),
+	    new OpenLayers.Control.ScaleLine(),
+            new OpenLayers.Control.Navigation(),
+            new OpenLayers.Control.LayerSwitcher(),
+	 	overviewctrl,
+            new OpenLayers.Control.PanZoomBar()
+		],
+        maxExtent:
+            new OpenLayers.Bounds(-20037508.34,-20037508.34,
+                                    20037508.34, 20037508.34),
+        numZoomLevels: 18,
+        maxResolution: 156543,
+        units: 'meters'
+    });
+
+    layer_osmtw = new OpenLayers.Layer.OSM.OSMTW("開放地圖");
+    layer_markers = new OpenLayers.Layer.Markers("站牌資訊", {maxExtent: new OpenLayers.Bounds(-20037508.34,-20037508.34,20037508.34,20037508.34), maxResolution: 156543, maxResolution: 156543,units: "m"});
+    map.addLayers([layer_osmtw, layer_markers]);
+    map.addControl(new OpenLayers.Control.KeyboardDefaults());
+
+    setMapCenter(centre, zoom);
+
+    update_pois();
+    map.events.register("moveend", map, update_pois);
+}
+
+</script>
+<style type="text/css">
+#container {
+  position: absolute;
+  left: 0px;
+  right: 0px;
+  height:100%;
+  margin: 0px auto;
+}
+#map {
+  width:80%;
+  height: 100%;
+  float:right;
+  margin: 0px auto;
+}
+#sidebar{
+  width: 20%;
+  height:100%;
+  margin: 0px;
+  float:left;
+}
+#msg_title{
+  float:top;
+  font:bold;
+  background-color:blue;
+}
+#msg{
+  float:top;
+}
+#routing_title{
+  float:bottom;
+  font:bold;
+  background-color:blue;
+}
+#routing{
+  float:bottom;
+}
+div.customMousePosition {
+    position: absolute;
+    right: 10px;
+    padding: 2px;
+    font-size: xx-small;
+}
+body{
+  margin:0;
+}
+
+</style>
+</head>
+<body onload="init()">
+<div id='container'>
+<div id="map"></div>
+  <div id="sidebar">
+    <p id="msg_title">動態資訊</p>
+    <p id="msg"></p>
+    <p id="routing_title">路徑規劃</p>
+    <p id="routing"></p>
+  </div>
+</div>
+</body>
+</html>
