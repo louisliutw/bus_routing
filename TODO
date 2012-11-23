@@ -1,0 +1,9 @@
+TODO list of bus_routing project.
+The order of the list dosen't stand for the priority.
+
+1. Fix routing
+2. Remember user location to reload
+3. Support stoparea tags
+4. Use GeoDjango
+5. Write scripts to trace news and modifications.
+6. Write tools to import data automatically
