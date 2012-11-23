@@ -1,4 +1,3 @@
-    history |grep import_route
     ./manage.py import_route 1624648 
     ./manage.py import_route 1624659 
     ./manage.py import_route 1624660

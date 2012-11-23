@@ -142,6 +142,6 @@ def routing(request):
    return HttpResponse(form.cleaned_data['callback'] + '('+ json.dumps({'result':[]}) + ')', mimetype='append/json')
 
 def map(request):
-  return render_to_response('bus.html', {'HOST':settings.HOST, 'PORT':settings.PORT})
+  return render_to_response('bus.html', {'HOST':settings.HOST, 'PORT':settings.PORT, 'JS_BASE_URL':settings.JS_BASE_URL})
 if __name__ == "__main__":
    print get_line(None, u"高雄市公車", "820")

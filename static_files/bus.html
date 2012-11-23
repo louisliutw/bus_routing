@@ -5,10 +5,10 @@
         <meta http-equiv="content-type" content="text/html; charset=utf-8" />
         <meta name="Content-Language" content="zh" />
         <script type="text/javascript" src="http://www.openlayers.org/api/OpenLayers.js"></script>
-        <script type="text/javascript" src="http://{{HOST}}/~louis/js/OpenStreetMap.js"></script>
-        <script type="text/javascript" src="http://{{HOST}}/~louis/js/map.js"></script>
+        <script type="text/javascript" src="{{JS_BASE_URL}}OpenStreetMap.js"></script>
+        <script type="text/javascript" src="{{JS_BASE_URL}}map.js"></script>
         <script type="text/javascript" src="http://www.google.com/jsapi"></script> <script type="text/javascript" language="javascript"> google.load("jquery", "1.3"); </script>
-        <script src="http://{{HOST}}/js/site.js" type="text/javascript"></script>
+        <script src="{{JS_BASE_URL}}site.js" type="text/javascript"></script>
         <script type="text/javascript">
 
 var map;
@@ -46,7 +46,11 @@ function set_start(bus_stop, start)
   $('#routing_title').html('路徑規劃  ' + a + ' - ' + b);
   if(start_stop != null && dest_stop != null){
     $.ajax({
+{% if PORT %}
 url: 'http://{{HOST}}:{{PORT}}/bus_routing/?start_id=' + start_stop.id + "&dest_id=" + dest_stop.id,
+{% else %}
+url: 'http://{{HOST}}/bus_routing/?start_id=' + start_stop.id + "&dest_id=" + dest_stop.id,
+{% endif %}
           type:'get',
           dataType: 'jsonp',
           crossDomain: true,
@@ -87,7 +91,11 @@ function marker_event(evt){
 				direct = bus_stops[i].route_ref[r].direct;
 				oper = bus_stops[i].oper;
 				$.ajax({
+{% if PORT %}
                                 url: 'http://{{HOST}}:{{PORT}}/bus_info/?ref=' + route_ref + "&oper="
+{% else %}
+                                url: 'http://{{HOST}}/bus_info/?ref=' + route_ref + "&oper="
+{% endif %}
                                 + oper + "&direct=" + direct,
 				type:'get',
 				dataType: 'jsonp',
@@ -122,12 +130,15 @@ function marker_event(evt){
 
 function update_pois(){
    $.ajax({
+{% if PORT %}
       url: 'http://{{HOST}}:{{PORT}}/bus_stops/',
+{% else %}
+      url: 'http://{{HOST}}/bus_stops/',
+{% endif %}
       type: 'GET',
       dataType: 'jsonp',
       crossDomain: true,
       error: function(xhr, text, errTh){
-	 alert(errTh);
          },
       success: function(response){
 	var len = stop_marks.length;
@@ -218,7 +229,7 @@ function init() {
 #msg_title{
   float:top;
   font:bold;
-  background-color:blue;
+  background-color:lightblue;
 }
 #msg{
   float:top;
@@ -226,7 +237,7 @@ function init() {
 #routing_title{
   float:bottom;
   font:bold;
-  background-color:blue;
+  background-color:lightblue;
 }
 #routing{
   float:bottom;
